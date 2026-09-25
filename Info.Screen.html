@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vreme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-deep:#1b2a4a;
+    --sky-mid:#2e4166;
+    --amber:#e8a54b;
+    --teal:#4a7c82;
+    --rain:#3f7ea6;
+    --wind:#8a6bb0;
+    --ink:#141a26;
+    --bg:#f3f1ec;
+    --panel:#ffffff;
+    --muted:#5b6577;
+    --line:rgba(20,26,38,0.1);
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10141f; --panel:#1a2032; --ink:#eef0f5;
+      --muted:#9aa3b8; --line:rgba(238,240,245,0.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10141f; --panel:#1a2032; --ink:#eef0f5;
+    --muted:#9aa3b8; --line:rgba(238,240,245,0.12);
+  }
+  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px;}
+  .hero{
+    background:linear-gradient(160deg,var(--sky-deep),var(--sky-mid));color:#fff;
+    border-radius:18px;padding:26px 24px;margin:0 0 18px;overflow:hidden;
+  }
+  .hero .loc{font-size:14px;opacity:.75;margin-bottom:2px;}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero .now{display:flex;align-items:baseline;gap:14px;}
+  .hero .temp{font-family:'Fraunces',serif;font-size:64px;font-weight:600;line-height:1;}
+  .hero .desc{font-size:16px;opacity:.9;}
+  .hero .icon{font-size:40px;line-height:1;}
+  .aqi-block{
+    text-align:center;flex-shrink:0;border-radius:14px;
+    padding:10px 20px;min-width:120px;background:rgba(255,255,255,0.14);
+  }
+  .aqi-label{font-size:12px;opacity:.75;letter-spacing:.02em;}
+  .aqi-num{font-family:'Fraunces',serif;font-weight:600;font-size:56px;line-height:1;}
+  .aqi-cat{font-size:12px;opacity:.9;margin-top:2px;}
+  .hero .meta{display:flex;gap:18px;margin-top:14px;font-size:13px;opacity:.85;flex-wrap:wrap;}
+  .hero .meta span b{color:var(--amber);font-weight:600;}
+
+  .forecast-grid{display:flex;flex-direction:column;gap:26px;}
+  .col{min-width:0;}
+  .colTitle{
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;
+    margin:0 0 10px;color:var(--ink);
+  }
+  @media (min-width:860px){
+    .wrap{max-width:980px;}
+    .forecast-grid{flex-direction:row;align-items:flex-start;gap:24px;}
+    .col{flex:1;}
+  }
+
+  .chart-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px 14px 10px;margin-bottom:10px;
+  }
+  .chart-legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:2px;}
+  .chart-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .chart-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+  .more-btn{
+    display:block;width:100%;text-align:center;background:none;
+    border:1px solid var(--line);border-radius:20px;padding:9px;
+    font-size:13px;color:var(--ink);cursor:pointer;margin-bottom:12px;font-family:inherit;
+  }
+  .more-btn:hover{border-color:var(--sky-deep);}
+
+  .details{display:none;}
+  .details.open{display:block;}
+
+  .detail-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:8px;
+  }
+  .detail-card .dtop{display:flex;align-items:center;gap:12px;}
+  .detail-card .dname{width:64px;font-weight:500;font-size:14px;flex-shrink:0;}
+  .detail-card .ddate{font-size:12px;color:var(--muted);display:block;}
+  .detail-card .dic{font-size:24px;width:30px;text-align:center;flex-shrink:0;}
+  .detail-card .ddesc{flex:1;font-size:13px;color:var(--muted);min-width:0;}
+  .detail-card .drange{font-size:14px;font-weight:600;white-space:nowrap;}
+  .detail-card .drange .lo{color:var(--muted);font-weight:400;}
+  .detail-card .dstats{
+    display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px;
+    border-top:1px solid var(--line);padding-top:10px;
+  }
+  .detail-card .dstat{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .detail-card .dstat b{color:var(--ink);font-weight:500;}
+
+  .status{font-size:13px;color:var(--muted);margin-top:18px;text-align:center;}
+  .status button{
+    background:none;border:1px solid var(--line);color:var(--ink);
+    padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;margin-top:6px;
+  }
+  .err{color:#c0554a;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero" id="hero">
+    <div class="loc" id="loc">Učitavanje lokacije…</div>
+    <div class="hero-top">
+      <div class="now">
+        <div class="icon" id="heroIcon">–</div>
+        <div class="temp" id="heroTemp">–°</div>
+        <div class="desc" id="heroDesc">Učitavanje…</div>
+      </div>
+      <div class="aqi-block" id="aqiBlock" style="display:none;">
+        <div class="aqi-label">AQI</div>
+        <div class="aqi-num" id="aqiNum">–</div>
+        <div class="aqi-cat" id="aqiCat">–</div>
+      </div>
+    </div>
+    <div class="meta">
+      <span>Oseća se kao <b id="heroFeels">–</b></span>
+      <span>Vlažnost <b id="heroHum">–</b></span>
+      <span>Vetar (brz./udar) <b id="heroWind">–</b></span>
+      <span>Padavine <b id="heroPrecip">–</b></span>
+    </div>
+  </div>
+
+  <div class="forecast-grid">
+    <section class="col">
+      <h2 class="colTitle">Sledećih 12h</h2>
+      <div class="chart-card">
+        <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine</span><span><i style="background:var(--wind)"></i>Vetar</span></div>
+        <div id="hourlyChart"></div>
+      </div>
+      <button class="more-btn" id="hourlyBtn">Prikaži detaljniji prikaz</button>
+      <div class="details" id="hourlyDetails"></div>
+    </section>
+
+    <section class="col">
+      <h2 class="colTitle">Sledećih 7 dana</h2>
+      <div class="chart-card">
+        <div class="chart-legend">
+          <span><i style="background:var(--amber)"></i>Maks.</span>
+          <span><i style="background:var(--teal)"></i>Min.</span>
+          <span><i style="background:var(--rain)"></i>Padavine</span>
+          <span><i style="background:var(--wind)"></i>Vetar</span>
+        </div>
+        <div id="dailyChart"></div>
+      </div>
+      <button class="more-btn" id="dailyBtn">Prikaži detaljniji prikaz</button>
+      <div class="details" id="dailyDetails"></div>
+    </section>
+  </div>
+
+  <div class="status" id="status">
+    Podaci: Open-Meteo
+  </div>
+</div>
+
+<script>
+const WMO = {
+  0:['☀️','Vedro'],1:['🌤️','Pretežno vedro'],2:['⛅','Delimično oblačno'],3:['☁️','Oblačno'],
+  45:['🌫️','Magla'],48:['🌫️','Slana magla'],
+  51:['🌦️','Slaba rosulja'],53:['🌦️','Rosulja'],55:['🌦️','Jaka rosulja'],
+  56:['🌧️','Ledena rosulja'],57:['🌧️','Jaka ledena rosulja'],
+  61:['🌧️','Slaba kiša'],63:['🌧️','Kiša'],65:['🌧️','Jaka kiša'],
+  66:['🌧️','Ledena kiša'],67:['🌧️','Jaka ledena kiša'],
+  71:['🌨️','Slab sneg'],73:['🌨️','Sneg'],75:['❄️','Jak sneg'],77:['❄️','Snežna zrna'],
+  80:['🌦️','Slabi pljuskovi'],81:['🌧️','Pljuskovi'],82:['⛈️','Jaki pljuskovi'],
+  85:['🌨️','Snežni pljuskovi'],86:['❄️','Jaki snežni pljuskovi'],
+  95:['⛈️','Grmljavina'],96:['⛈️','Grmljavina sa gradom'],99:['⛈️','Jaka grmljavina sa gradom']
+};
+const dayShort = ['Ned','Pon','Uto','Sre','Čet','Pet','Sub'];
+const BELGRADE = {lat:44.8125, lon:20.4612, name:'Beograd'};
+
+function wmoInfo(code){ return WMO[code] || ['🌡️','Vreme']; }
+function windLabel(speed, gust){ return Math.round(speed) + '/' + Math.round(gust) + ' km/h'; }
+
+function buildUrl(lat, lon){
+  return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,wind_gusts_10m,weather_code` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,uv_index_clear_sky_max` +
+    `&timezone=auto&forecast_days=8`;
+}
+
+function buildAqiUrl(lat, lon){
+  return `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}` +
+    `&current=us_aqi,european_aqi&timezone=auto`;
+}
+
+function aqiCategory(aqi){
+  if(aqi<=50)  return {label:'Dobar', color:'#5fa777'};
+  if(aqi<=100) return {label:'Umeren', color:'#d8b84a'};
+  if(aqi<=150) return {label:'Nezdrav za osetljive grupe', color:'#dd8a45'};
+  if(aqi<=200) return {label:'Nezdrav', color:'#c0554a'};
+  if(aqi<=300) return {label:'Vrlo nezdrav', color:'#8a5aa8'};
+  return {label:'Opasan', color:'#7a3b40'};
+}
+
+function contrastText(hex){
+  const c = hex.replace('#','');
+  const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return lum > 0.6 ? '#141a26' : '#ffffff';
+}
+
+function findCurrentIndex(times){
+  const now = new Date();
+  for(let i=0;i<times.length;i++){ if(new Date(times[i]) >= now) return i; }
+  return 0;
+}
+
+/* ---- generic SVG line chart ---- */
+function svgLineChart(labels, series, height){
+  const W=600, H=height, padL=16, padR=16, padT=24, padB=22;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const n = labels.length;
+  const x = i => padL + (n===1 ? plotW/2 : i*(plotW/(n-1)));
+
+  const groups = {};
+  series.forEach(s=>{
+    const g = s.scaleGroup || 'main';
+    (groups[g] = groups[g] || []).push(s);
+  });
+  const range = {};
+  Object.keys(groups).forEach(g=>{
+    const zeroBase = groups[g].some(s=>s.zeroBase);
+    const vals = groups[g].flatMap(s=>s.values);
+    let min = zeroBase ? 0 : Math.min(...vals);
+    let max = Math.max(...vals);
+    if(max <= min) max = min + 1;
+    range[g] = {min,max};
+  });
+  const y = (v,g) => { const r=range[g]; return padT + plotH - ((v-r.min)/(r.max-r.min))*plotH; };
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H}px;display:block;font-family:'IBM Plex Sans',sans-serif;">`;
+
+  series.forEach(s=>{
+    const g = s.scaleGroup || 'main';
+    const pts = s.values.map((v,i)=>`${x(i)},${y(v,g)}`).join(' ');
+    if(s.area){
+      svg += `<polygon points="${x(0)},${padT+plotH} ${pts} ${x(n-1)},${padT+plotH}" fill="${s.color}" opacity="0.12"/>`;
+    }
+    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" ${s.dash?`stroke-dasharray="${s.dash}"`:''}/>`;
+    s.values.forEach((v,i)=>{
+      svg += `<circle cx="${x(i)}" cy="${y(v,g)}" r="2.8" fill="${s.color}"/>`;
+      if(s.showValues!==false){
+        svg += `<text x="${x(i)}" y="${y(v,g)+(s.labelBelow?16:-8)}" font-size="10" text-anchor="middle" fill="${s.color}">${s.unit==='mm' ? v.toFixed(1) : Math.round(v)+'°'}</text>`;
+      }
+    });
+  });
+
+  labels.forEach((lab,i)=>{
+    svg += `<text x="${x(i)}" y="${H-6}" font-size="10" text-anchor="middle" fill="var(--muted)">${lab}</text>`;
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ---- hero ---- */
+function renderHero(data, locLabel){
+  const h = data.hourly;
+  const idx = findCurrentIndex(h.time);
+  const [icon, desc] = wmoInfo(h.weather_code[idx]);
+  document.getElementById('loc').textContent = locLabel;
+  document.getElementById('heroIcon').textContent = icon;
+  document.getElementById('heroTemp').textContent = Math.round(h.temperature_2m[idx]) + '°';
+  document.getElementById('heroDesc').textContent = desc;
+  document.getElementById('heroWind').textContent = windLabel(h.wind_speed_10m[idx], h.wind_gusts_10m[idx]);
+  document.getElementById('heroFeels').textContent = Math.round(h.apparent_temperature[idx]) + '°';
+  document.getElementById('heroHum').textContent = h.relative_humidity_2m[idx] + '%';
+  document.getElementById('heroPrecip').textContent = h.precipitation[idx] + ' mm';
+}
+
+function renderAqi(aqiData){
+  const block = document.getElementById('aqiBlock');
+  const aqi = aqiData && aqiData.current ? aqiData.current.us_aqi : null;
+  if(aqi==null){ block.style.display = 'none'; return; }
+  const cat = aqiCategory(aqi);
+  const text = contrastText(cat.color);
+  block.style.background = cat.color;
+  block.style.color = text;
+  document.getElementById('aqiNum').textContent = aqi;
+  document.getElementById('aqiCat').textContent = cat.label;
+  block.style.display = 'block';
+}
+
+/* ---- hourly: chart + details ---- */
+function renderHourly(data){
+  const h = data.hourly;
+  const start = findCurrentIndex(h.time);
+  const idxs = [];
+  for(let i=start; i<start+12 && i<h.time.length; i++) idxs.push(i);
+
+  const labels = idxs.map((i,k)=> k===0 ? 'Sada' : String(new Date(h.time[i]).getHours()).padStart(2,'0')+'h');
+  const temps = idxs.map(i => h.temperature_2m[i]);
+  const precips = idxs.map(i => h.precipitation[i]);
+  const winds = idxs.map(i => h.wind_speed_10m[i]);
+  document.getElementById('hourlyChart').innerHTML = svgLineChart(labels, [
+    {values:temps, color:'var(--amber)'},
+    {values:precips, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', showValues:false, dash:'4,3'},
+    {values:winds, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
+  ], 150);
+
+  const det = document.getElementById('hourlyDetails');
+  det.innerHTML = '';
+  idxs.forEach((i,k)=>{
+    const d = new Date(h.time[i]);
+    const hh = String(d.getHours()).padStart(2,'0') + ':00';
+    const [icon, desc] = wmoInfo(h.weather_code[i]);
+    const temp = Math.round(h.temperature_2m[i]);
+    const feels = Math.round(h.apparent_temperature[i]);
+    det.insertAdjacentHTML('beforeend', `
+      <div class="detail-card">
+        <div class="dtop">
+          <div class="dname">${k===0 ? 'Sada' : hh}</div>
+          <div class="dic">${icon}</div>
+          <div class="ddesc">${desc}</div>
+          <div class="drange">${temp}°</div>
+        </div>
+        <div class="dstats">
+          <div class="dstat">🌡️ oseća se <b>${feels}°</b></div>
+          <div class="dstat">💧 padavine <b>${h.precipitation[i]} mm</b></div>
+          <div class="dstat">💦 vlažnost <b>${h.relative_humidity_2m[i]}%</b></div>
+          <div class="dstat">💨 vetar (brz./udar) <b>${windLabel(h.wind_speed_10m[i], h.wind_gusts_10m[i])}</b></div>
+        </div>
+      </div>
+    `);
+  });
+}
+
+/* ---- daily: chart + details ---- */
+function renderDaily(data){
+  const dl = data.daily;
+  const n = Math.min(7, dl.time.length);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const labels = [];
+  for(let i=0;i<n;i++){
+    const d = new Date(dl.time[i]);
+    labels.push(d.getTime()===today.getTime() ? 'Danas' : dayShort[d.getDay()]);
+  }
+  const maxT = dl.temperature_2m_max.slice(0,n);
+  const minT = dl.temperature_2m_min.slice(0,n);
+  const precipSum = dl.precipitation_sum.slice(0,n);
+  const windMax = dl.wind_speed_10m_max.slice(0,n);
+  document.getElementById('dailyChart').innerHTML = svgLineChart(labels, [
+    {values:maxT, color:'var(--amber)'},
+    {values:minT, color:'var(--teal)', labelBelow:true},
+    {values:precipSum, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', showValues:false, dash:'4,3'},
+    {values:windMax, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
+  ], 150);
+
+  const det = document.getElementById('dailyDetails');
+  det.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const d = new Date(dl.time[i]);
+    const isToday = d.getTime() === today.getTime();
+    const [icon, desc] = wmoInfo(dl.weather_code[i]);
+    const max = Math.round(dl.temperature_2m_max[i]);
+    const min = Math.round(dl.temperature_2m_min[i]);
+    const uv = Math.round(dl.uv_index_max[i]*10)/10;
+    const uvClear = Math.round(dl.uv_index_clear_sky_max[i]*10)/10;
+    det.insertAdjacentHTML('beforeend', `
+      <div class="detail-card">
+        <div class="dtop">
+          <div class="dname">${isToday ? 'Danas' : dayShort[d.getDay()]}<span class="ddate">${d.getDate()}.${d.getMonth()+1}.</span></div>
+          <div class="dic">${icon}</div>
+          <div class="ddesc">${desc}</div>
+          <div class="drange">${max}° <span class="lo">${min}°</span></div>
+        </div>
+        <div class="dstats">
+          <div class="dstat">💧 padavine <b>${dl.precipitation_sum[i]} mm</b></div>
+          <div class="dstat">💨 vetar (brz./udar) <b>${windLabel(dl.wind_speed_10m_max[i], dl.wind_gusts_10m_max[i])}</b></div>
+          <div class="dstat">☀️ UV maks (obl./vedro) <b>${uv} / ${uvClear}</b></div>
+        </div>
+      </div>
+    `);
+  }
+}
+
+document.getElementById('hourlyBtn').addEventListener('click', () => {
+  const d = document.getElementById('hourlyDetails');
+  const open = d.classList.toggle('open');
+  document.getElementById('hourlyBtn').textContent = open ? 'Sakrij detaljniji prikaz' : 'Prikaži detaljniji prikaz';
+});
+document.getElementById('dailyBtn').addEventListener('click', () => {
+  const d = document.getElementById('dailyDetails');
+  const open = d.classList.toggle('open');
+  document.getElementById('dailyBtn').textContent = open ? 'Sakrij detaljniji prikaz' : 'Prikaži detaljniji prikaz';
+});
+
+async function loadWeather(lat, lon, locLabel){
+  const status = document.getElementById('status');
+  try{
+    const res = await fetch(buildUrl(lat, lon));
+    if(!res.ok) throw new Error('Mrežna greška');
+    const data = await res.json();
+    renderHero(data, locLabel);
+    renderHourly(data);
+    renderDaily(data);
+    status.innerHTML = 'Podaci: Open-Meteo · ažurirano ' +
+      new Date().toLocaleTimeString('sr-RS',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    status.innerHTML = '<span class="err">Nije moguće učitati podatke o vremenu.</span><br><button onclick="init()">Pokušaj ponovo</button>';
+    return;
+  }
+  try{
+    const aqiRes = await fetch(buildAqiUrl(lat, lon));
+    if(aqiRes.ok) renderAqi(await aqiRes.json());
+  }catch(e){ /* AQI je opcioni podatak - tiho preskačemo ako ne uspe */ }
+}
+
+function init(){
+  document.getElementById('status').textContent = 'Učitavanje…';
+  if(navigator.geolocation){
+    const timeout = setTimeout(() => {
+      loadWeather(BELGRADE.lat, BELGRADE.lon, BELGRADE.name + ' (podrazumevano)');
+    }, 4000);
+    navigator.geolocation.getCurrentPosition(
+      pos => { clearTimeout(timeout); loadWeather(pos.coords.latitude, pos.coords.longitude, 'Vaša lokacija'); },
+      () => { clearTimeout(timeout); loadWeather(BELGRADE.lat, BELGRADE.lon, BELGRADE.name + ' (podrazumevano)'); },
+      {timeout:4000}
+    );
+  } else {
+    loadWeather(BELGRADE.lat, BELGRADE.lon, BELGRADE.name + ' (podrazumevano)');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
