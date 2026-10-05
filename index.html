@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Vreme</title>
+<title>Index</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -69,16 +69,14 @@
     margin:0;color:var(--ink);
   }
   .toggle-btn{
-    width:26px;height:26px;flex-shrink:0;border-radius:50%;
+    flex-shrink:0;border-radius:14px;padding:5px 12px;
     border:1px solid var(--line);background:var(--panel);color:var(--ink);
-    font-size:15px;line-height:1;cursor:pointer;font-family:inherit;
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .15s ease, background .15s ease, color .15s ease, border-color .15s ease;
+    font-size:12px;line-height:1;cursor:pointer;font-family:inherit;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
   .toggle-btn:hover{border-color:var(--sky-deep);}
   .toggle-btn[aria-expanded="true"]{
     background:var(--sky-deep);color:#fff;border-color:var(--sky-deep);
-    transform:rotate(45deg);
   }
   @media (min-width:860px){
     .wrap{max-width:980px;}
@@ -187,7 +185,7 @@
     <section class="col">
       <div class="col-head">
         <h2 class="colTitle">Sledećih 12h</h2>
-        <button class="toggle-btn" id="hourlyBtn" aria-expanded="false" aria-label="Detaljnije">+</button>
+        <button class="toggle-btn" id="hourlyBtn" aria-expanded="false">Detaljnije</button>
       </div>
       <div class="chart-card">
         <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine</span><span><i style="background:var(--wind)"></i>Vetar</span></div>
@@ -199,7 +197,7 @@
     <section class="col">
       <div class="col-head">
         <h2 class="colTitle">Sledećih 7 dana</h2>
-        <button class="toggle-btn" id="dailyBtn" aria-expanded="false" aria-label="Detaljnije">+</button>
+        <button class="toggle-btn" id="dailyBtn" aria-expanded="false">Detaljnije</button>
       </div>
       <div class="chart-card">
         <div class="chart-legend">
@@ -217,7 +215,7 @@
   <section class="menu-section">
     <div class="col-head">
       <h2 class="colTitle">Jelovnik (vrtić) – danas</h2>
-      <button class="toggle-btn" id="menuImgBtn" aria-expanded="false" aria-label="Prikaži sliku jelovnika">+</button>
+      <button class="toggle-btn" id="menuImgBtn" aria-expanded="false">Detaljnije</button>
     </div>
 
     <div class="menu-today-head">
@@ -469,11 +467,13 @@ document.getElementById('hourlyBtn').addEventListener('click', (e) => {
   const d = document.getElementById('hourlyDetails');
   const open = d.classList.toggle('open');
   e.currentTarget.setAttribute('aria-expanded', open);
+  e.currentTarget.textContent = open ? 'Sakrij' : 'Detaljnije';
 });
 document.getElementById('dailyBtn').addEventListener('click', (e) => {
   const d = document.getElementById('dailyDetails');
   const open = d.classList.toggle('open');
   e.currentTarget.setAttribute('aria-expanded', open);
+  e.currentTarget.textContent = open ? 'Sakrij' : 'Detaljnije';
 });
 
 async function loadWeather(lat, lon, locLabel){
@@ -572,6 +572,7 @@ document.getElementById('menuImgBtn').addEventListener('click', (e) => {
   const d = document.getElementById('menuImgDetails');
   const open = d.classList.toggle('open');
   e.currentTarget.setAttribute('aria-expanded', open);
+  e.currentTarget.textContent = open ? 'Sakrij' : 'Detaljnije';
   if(open) renderMenu();
 });
 
