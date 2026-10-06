@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Index</title>
+<title>Vreme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -46,20 +46,25 @@
     border-radius:18px;padding:20px 22px;margin:0 0 16px;overflow:hidden;
   }
   .hero .loc{font-size:14px;opacity:.75;margin-bottom:2px;}
-  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero-top{display:grid;grid-template-columns:1fr auto;align-items:start;gap:16px;}
+  .weather-col{min-width:0;}
   .hero .now{display:flex;align-items:baseline;gap:14px;}
   .hero .temp{font-family:'Fraunces',serif;font-size:64px;font-weight:600;line-height:1;}
   .hero .desc{font-size:16px;opacity:.9;}
   .hero .icon{font-size:40px;line-height:1;}
   .aqi-block{
-    text-align:center;flex-shrink:0;border-radius:14px;
+    text-align:center;flex-shrink:0;border-radius:14px;align-self:center;
     padding:10px 20px;min-width:120px;background:rgba(255,255,255,0.14);
   }
   .aqi-label{font-size:12px;opacity:.75;letter-spacing:.02em;}
   .aqi-num{font-family:'Fraunces',serif;font-weight:600;font-size:56px;line-height:1;}
   .aqi-cat{font-size:12px;opacity:.9;margin-top:2px;}
-  .hero .meta{display:flex;gap:18px;margin-top:14px;font-size:13px;opacity:.85;flex-wrap:wrap;}
+  .hero .meta{display:flex;gap:14px 18px;margin-top:14px;font-size:13px;opacity:.85;flex-wrap:wrap;}
   .hero .meta span b{color:var(--amber);font-weight:600;}
+  @media (orientation:portrait){
+    .hero-top{grid-template-columns:1fr;}
+    .aqi-block{justify-self:center;margin-top:4px;}
+  }
 
   .forecast-grid{display:flex;flex-direction:column;gap:18px;}
   .col{min-width:0;}
@@ -112,11 +117,8 @@
   }
   .detail-card .dstat{font-size:12px;color:var(--muted);white-space:nowrap;}
   .detail-card .dstat b{color:var(--ink);font-weight:500;}
-  .menu-today-head{
-    display:flex;align-items:baseline;gap:10px;margin-bottom:10px;
-    font-size:14px;font-weight:600;color:var(--ink);
-  }
-  .menu-today-head span:last-child{font-weight:400;font-size:12px;color:var(--muted);}
+  .menu-status{font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .menu-status:empty{display:none;}
   .menu-today-grid{
     display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;
   }
@@ -131,6 +133,7 @@
     margin-bottom:5px;display:flex;align-items:center;gap:5px;
   }
   .meal-cell .meal-value{font-size:13px;color:var(--ink);line-height:1.45;}
+  .meal-cell .meal-value[title]{border-bottom:1px dotted var(--muted);cursor:help;}
 
   .menu-section{margin-top:8px;}
   .menu-card{
@@ -162,22 +165,24 @@
   <div class="hero" id="hero">
     <div class="loc" id="loc">Učitavanje lokacije…</div>
     <div class="hero-top">
-      <div class="now">
-        <div class="icon" id="heroIcon">–</div>
-        <div class="temp" id="heroTemp">–°</div>
-        <div class="desc" id="heroDesc">Učitavanje…</div>
+      <div class="weather-col">
+        <div class="now">
+          <div class="icon" id="heroIcon">–</div>
+          <div class="temp" id="heroTemp">–°</div>
+          <div class="desc" id="heroDesc">Učitavanje…</div>
+        </div>
+        <div class="meta">
+          <span>Oseća se kao <b id="heroFeels">–</b></span>
+          <span>Vlažnost <b id="heroHum">–</b></span>
+          <span>Vetar (brz./udar) <b id="heroWind">–</b></span>
+          <span>Padavine <b id="heroPrecip">–</b></span>
+        </div>
       </div>
       <div class="aqi-block" id="aqiBlock" style="display:none;">
         <div class="aqi-label">AQI</div>
         <div class="aqi-num" id="aqiNum">–</div>
         <div class="aqi-cat" id="aqiCat">–</div>
       </div>
-    </div>
-    <div class="meta">
-      <span>Oseća se kao <b id="heroFeels">–</b></span>
-      <span>Vlažnost <b id="heroHum">–</b></span>
-      <span>Vetar (brz./udar) <b id="heroWind">–</b></span>
-      <span>Padavine <b id="heroPrecip">–</b></span>
     </div>
   </div>
 
@@ -214,14 +219,11 @@
 
   <section class="menu-section">
     <div class="col-head">
-      <h2 class="colTitle">Jelovnik (vrtić) – danas</h2>
+      <h2 class="colTitle">Jelovnik (vrtić) – <span id="menuDanName">danas</span></h2>
       <button class="toggle-btn" id="menuImgBtn" aria-expanded="false">Detaljnije</button>
     </div>
 
-    <div class="menu-today-head">
-      <span id="menuDanName">–</span>
-      <span id="menuTodayStatus">Učitavanje…</span>
-    </div>
+    <div class="menu-status" id="menuTodayStatus"></div>
     <div class="menu-today-grid" id="menuTodayStats"></div>
 
     <div class="details" id="menuImgDetails">
@@ -519,6 +521,25 @@ const MENU_SERVICE_BASE = 'https://jelovnik-service.onrender.com';
 const MENU_IMG_URL = MENU_SERVICE_BASE + '/jelovnik/vrtic';
 const MENU_TODAY_URL = MENU_SERVICE_BASE + '/jelovnik/vrtic/danas';
 
+// Izdvaja tekst u zagradama (npr. alergeni) u "hint" (title atribut, prikazuje se
+// kao tooltip na hover), a glavni tekst ostaje čist bez zagrada.
+function splitHint(text){
+  if(!text) return {main:'', hint:''};
+  const hints = [];
+  const main = text
+    .replace(/\(([^)]*)\)/g, (_, inner) => { hints.push(inner.trim()); return ''; })
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([.,])/g, '$1')
+    .trim();
+  return {main, hint: hints.join('; ')};
+}
+
+function mealCellHtml(emoji, label, text){
+  const {main, hint} = splitHint(text || '');
+  const titleAttr = hint ? ` title="${hint.replace(/"/g, '&quot;')}"` : '';
+  return `<div class="meal-cell"><div class="meal-label">${emoji} ${label}</div><div class="meal-value"${titleAttr}>${main || '–'}</div></div>`;
+}
+
 async function loadMenuToday(){
   const nameEl = document.getElementById('menuDanName');
   const statusEl = document.getElementById('menuTodayStatus');
@@ -541,12 +562,11 @@ async function loadMenuToday(){
     }
 
     statusEl.textContent = '';
-    statsEl.innerHTML = `
-      <div class="meal-cell"><div class="meal-label">🍳 Doručak</div><div class="meal-value">${data.dorucak || '–'}</div></div>
-      <div class="meal-cell"><div class="meal-label">🍎 Voće</div><div class="meal-value">${data.voce || '–'}</div></div>
-      <div class="meal-cell"><div class="meal-label">🥪 Užina</div><div class="meal-value">${data.uzina || '–'}</div></div>
-      <div class="meal-cell"><div class="meal-label">🍽️ Ručak</div><div class="meal-value">${data.rucak || '–'}</div></div>
-    `;
+    statsEl.innerHTML =
+      mealCellHtml('🍳', 'Doručak', data.dorucak) +
+      mealCellHtml('🍎', 'Voće', data.voce) +
+      mealCellHtml('🥪', 'Užina', data.uzina) +
+      mealCellHtml('🍽️', 'Ručak', data.rucak);
   }catch(e){
     statusEl.textContent = 'Nije moguće učitati jelovnik za danas.';
     statsEl.innerHTML = '';
