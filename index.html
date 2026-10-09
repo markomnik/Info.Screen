@@ -74,16 +74,18 @@
     .hero-top{grid-template-columns:1fr;}
     .aqi-block{justify-self:center;margin-top:4px;}
   }
-  .cal-hero{display:none;}
+  /* kalendar je skriven dok nema šta da prikaže; JS dodaje body.cal-on kad ima stavki */
+  .cal-hero, .cal-section{display:none;}
+  body.cal-on .cal-section{display:block;}
   @media (orientation:landscape) and (min-width:860px){
-    .hero-top{grid-template-columns:minmax(0,1.2fr) auto minmax(0,1fr);}
-    .weather-col{grid-column:1;}
-    .aqi-block{grid-column:2;}
-    .cal-hero{
+    body.cal-on .hero-top{grid-template-columns:minmax(0,1.2fr) auto minmax(0,1fr);}
+    body.cal-on .weather-col{grid-column:1;}
+    body.cal-on .aqi-block{grid-column:2;}
+    body.cal-on .cal-hero{
       display:block;grid-column:3;align-self:stretch;min-width:0;
       background:rgba(255,255,255,0.10);border-radius:14px;padding:10px 14px;
     }
-    .cal-section{display:none;}
+    body.cal-on .cal-section{display:none;}
   }
   .cal-hero-label{font-size:12px;opacity:.75;letter-spacing:.02em;margin-bottom:6px;}
   .cal-hero .cal-item{color:#fff;}
@@ -239,7 +241,7 @@
         <button class="toggle-btn" id="hourlyBtn" aria-expanded="false">Detaljnije</button>
       </div>
       <div class="chart-card">
-        <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine</span><span><i style="background:var(--wind)"></i>Vetar</span></div>
+        <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine (mm)</span><span><i style="background:var(--wind)"></i>Vetar</span></div>
         <div id="hourlyChart"></div>
       </div>
       <div class="details" id="hourlyDetails"></div>
@@ -254,7 +256,7 @@
         <div class="chart-legend">
           <span><i style="background:var(--amber)"></i>Maks.</span>
           <span><i style="background:var(--teal)"></i>Min.</span>
-          <span><i style="background:var(--rain)"></i>Padavine</span>
+          <span><i style="background:var(--rain)"></i>Padavine (mm)</span>
           <span><i style="background:var(--wind)"></i>Vetar</span>
         </div>
         <div id="dailyChart"></div>
@@ -343,7 +345,8 @@ function findCurrentIndex(times){
 
 /* ---- generic SVG line chart ---- */
 function svgLineChart(labels, series, height){
-  const W=600, H=height, padL=16, padR=16, padT=24, padB=22;
+  const hasAxis = series.some(s=>s.axisUnit);
+  const W=600, H=height, padL=16, padR=hasAxis?44:16, padT=24, padB=22;
   const plotW=W-padL-padR, plotH=H-padT-padB;
   const n = labels.length;
   const x = i => padL + (n===1 ? plotW/2 : i*(plotW/(n-1)));
@@ -379,6 +382,20 @@ function svgLineChart(labels, series, height){
         svg += `<text x="${x(i)}" y="${y(v,g)+(s.labelBelow?16:-8)}" font-size="10" text-anchor="middle" fill="${s.color}">${s.unit==='mm' ? v.toFixed(1) : Math.round(v)+'°'}</text>`;
       }
     });
+  });
+
+  // desna osa za padavine: gore je maksimum u prikazanom periodu, 0 je dno grafika
+  series.forEach(s=>{
+    if(!s.axisUnit) return;
+    const realMax = Math.max(...s.values);
+    const fmt = v => String(+v.toFixed(1));
+    const tx = W - 3;
+    if(realMax > 0){
+      svg += `<text x="${tx}" y="${padT + 9}" font-size="9" text-anchor="end" fill="${s.color}">${fmt(realMax)} ${s.axisUnit}</text>`;
+      svg += `<text x="${tx}" y="${padT + plotH}" font-size="9" text-anchor="end" fill="${s.color}">0</text>`;
+    } else {
+      svg += `<text x="${tx}" y="${padT + plotH - 4}" font-size="9" text-anchor="end" fill="${s.color}">0 ${s.axisUnit}</text>`;
+    }
   });
 
   labels.forEach((lab,i)=>{
@@ -430,7 +447,7 @@ function renderHourly(data){
   const winds = idxs.map(i => h.wind_speed_10m[i]);
   document.getElementById('hourlyChart').innerHTML = svgLineChart(labels, [
     {values:temps, color:'var(--amber)'},
-    {values:precips, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', showValues:false, dash:'4,3'},
+    {values:precips, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', axisUnit:'mm', showValues:false, dash:'4,3'},
     {values:winds, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
   ], 150);
 
@@ -479,7 +496,7 @@ function renderDaily(data){
   document.getElementById('dailyChart').innerHTML = svgLineChart(labels, [
     {values:maxT, color:'var(--amber)'},
     {values:minT, color:'var(--teal)', labelBelow:true},
-    {values:precipSum, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', showValues:false, dash:'4,3'},
+    {values:precipSum, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', axisUnit:'mm', showValues:false, dash:'4,3'},
     {values:windMax, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
   ], 150);
 
@@ -661,7 +678,7 @@ function calendarItemsHtml(data){
       items.push(`<div class="cal-item"><span class="cal-date">${when}</span> · <span class="cal-title">${escapeHtml(ev.title)}</span>${loc}</div>`);
     });
   });
-  return items.length ? items.join('') : '<div class="cal-empty">Nema zakazanih termina.</div>';
+  return items.join('');
 }
 
 // isti sadržaj ide u oba bloka; CSS (orijentacija) bira koji je vidljiv
@@ -675,9 +692,14 @@ async function initCalendar(){
     const res = await fetch(CALENDAR_URL);
     const data = await res.json();
     if(!res.ok || data.greska) throw new Error(data.greska || 'greška');
-    setCalendarHtml(calendarItemsHtml(data));
+    const html = calendarItemsHtml(data);
+    // bez događaja kalendar se uopšte ne prikazuje
+    if(html) setCalendarHtml(html);
+    document.body.classList.toggle('cal-on', !!html);
   }catch(e){
+    // greška ostaje vidljiva, da se ne bi pogrešno zaključilo da nema događaja
     setCalendarHtml('<div class="cal-empty">Kalendar trenutno nije dostupan.</div>');
+    document.body.classList.add('cal-on');
   }
 }
 
