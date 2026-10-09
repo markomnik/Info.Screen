@@ -74,6 +74,22 @@
     .hero-top{grid-template-columns:1fr;}
     .aqi-block{justify-self:center;margin-top:4px;}
   }
+  .cal-hero{display:none;}
+  @media (orientation:landscape) and (min-width:860px){
+    .hero-top{grid-template-columns:minmax(0,1.2fr) auto minmax(0,1fr);}
+    .weather-col{grid-column:1;}
+    .aqi-block{grid-column:2;}
+    .cal-hero{
+      display:block;grid-column:3;align-self:stretch;min-width:0;
+      background:rgba(255,255,255,0.10);border-radius:14px;padding:10px 14px;
+    }
+    .cal-section{display:none;}
+  }
+  .cal-hero-label{font-size:12px;opacity:.75;letter-spacing:.02em;margin-bottom:6px;}
+  .cal-hero .cal-item{color:#fff;}
+  .cal-hero .cal-date{color:var(--amber);}
+  .cal-hero .cal-loc{color:#fff;opacity:.75;}
+  .cal-hero .cal-empty{color:rgba(255,255,255,.7);}
 
   .forecast-grid{display:flex;flex-direction:column;gap:18px;}
   .col{min-width:0;}
@@ -144,18 +160,14 @@
   .meal-cell .meal-value{font-size:13px;color:var(--ink);line-height:1.45;}
   .meal-cell .meal-value[title]{border-bottom:1px dotted var(--muted);cursor:help;}
 
-  .cal-section{margin-top:8px;}
-  .cal-day{margin-bottom:14px;}
-  .cal-day:last-child{margin-bottom:0;}
-  .cal-day-label{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;}
-  .cal-event{
-    display:flex;gap:10px;align-items:baseline;
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:8px 12px;margin-bottom:6px;font-size:13px;
+  .cal-section{margin-bottom:16px;}
+  .cal-list{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:8px 14px;
   }
-  .cal-event .cal-time{color:var(--muted);font-size:12px;white-space:nowrap;min-width:78px;flex-shrink:0;}
-  .cal-event .cal-title{color:var(--ink);flex:1;min-width:0;}
-  .cal-event .cal-loc{color:var(--muted);font-weight:400;}
+  .cal-item{font-size:13px;line-height:1.5;padding:3px 0;color:var(--ink);}
+  .cal-date{font-weight:600;white-space:nowrap;}
+  .cal-loc{color:var(--muted);}
   .cal-empty{font-size:12px;color:var(--muted);}
 
   .menu-section{margin-top:8px;}
@@ -206,8 +218,19 @@
         <div class="aqi-num" id="aqiNum">–</div>
         <div class="aqi-cat" id="aqiCat">–</div>
       </div>
+      <div class="cal-hero" id="calHero">
+        <div class="cal-hero-label">Kalendar</div>
+        <div id="calHeroBody"><div class="cal-empty">Učitavanje…</div></div>
+      </div>
     </div>
   </div>
+
+  <section class="cal-section">
+    <div class="col-head">
+      <h2 class="colTitle">Kalendar</h2>
+    </div>
+    <div class="cal-list" id="calBody"><div class="cal-empty">Učitavanje…</div></div>
+  </section>
 
   <div class="forecast-grid">
     <section class="col">
@@ -239,13 +262,6 @@
       <div class="details" id="dailyDetails"></div>
     </section>
   </div>
-
-  <section class="cal-section">
-    <div class="col-head">
-      <h2 class="colTitle">Kalendar</h2>
-    </div>
-    <div id="calBody"><div class="cal-empty">Učitavanje…</div></div>
-  </section>
 
   <section class="menu-section">
     <div class="col-head">
@@ -633,29 +649,35 @@ function escapeHtml(s){
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function renderCalendar(data){
-  const body = document.getElementById('calBody');
-  body.innerHTML = data.days.map(day => {
-    const rows = day.events.length
-      ? day.events.map(ev => {
-          const time = ev.allDay ? 'Ceo dan' : (ev.continues ? 'Nastavlja se' : ev.time);
-          const loc = ev.location ? ` <span class="cal-loc">· ${escapeHtml(ev.location)}</span>` : '';
-          return `<div class="cal-event"><span class="cal-time">${time}</span><span class="cal-title">${escapeHtml(ev.title)}${loc}</span></div>`;
-        }).join('')
-      : '<div class="cal-empty">Nema zakazanih termina.</div>';
-    return `<div class="cal-day"><div class="cal-day-label">${escapeHtml(day.label)}</div>${rows}</div>`;
-  }).join('');
+function calendarItemsHtml(data){
+  const items = [];
+  data.days.forEach(day => {
+    const [y, m, d] = day.date.split('-').map(Number);
+    const dateLabel = `${dayShort[new Date(y, m - 1, d).getDay()]} ${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.`;
+    day.events.forEach(ev => {
+      if(ev.continues) return; // nastavak događaja koji je već naveden na svom prvom danu
+      const loc = ev.location ? ` · <span class="cal-loc">${escapeHtml(ev.location)}</span>` : '';
+      const when = ev.time ? `${dateLabel} ${ev.time}` : dateLabel;
+      items.push(`<div class="cal-item"><span class="cal-date">${when}</span> · <span class="cal-title">${escapeHtml(ev.title)}</span>${loc}</div>`);
+    });
+  });
+  return items.length ? items.join('') : '<div class="cal-empty">Nema zakazanih termina.</div>';
+}
+
+// isti sadržaj ide u oba bloka; CSS (orijentacija) bira koji je vidljiv
+function setCalendarHtml(html){
+  document.getElementById('calBody').innerHTML = html;
+  document.getElementById('calHeroBody').innerHTML = html;
 }
 
 async function initCalendar(){
-  const body = document.getElementById('calBody');
   try{
     const res = await fetch(CALENDAR_URL);
     const data = await res.json();
     if(!res.ok || data.greska) throw new Error(data.greska || 'greška');
-    renderCalendar(data);
+    setCalendarHtml(calendarItemsHtml(data));
   }catch(e){
-    body.innerHTML = '<div class="cal-empty">Kalendar trenutno nije dostupan.</div>';
+    setCalendarHtml('<div class="cal-empty">Kalendar trenutno nije dostupan.</div>');
   }
 }
 
