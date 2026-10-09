@@ -160,7 +160,13 @@
     margin-bottom:5px;display:flex;align-items:center;gap:5px;
   }
   .meal-cell .meal-value{font-size:13px;color:var(--ink);line-height:1.45;}
-  .meal-cell .meal-value[title]{border-bottom:1px dotted var(--muted);cursor:help;}
+  .meal-paren{color:var(--muted);}
+  /* hint umesto zagrada samo u landscape-u i samo na uređajima sa mišem (hover);
+     na ekranima osetljivim na dodir tekst u zagradama ostaje vidljiv */
+  @media (orientation:landscape) and (hover:hover){
+    .meal-paren{display:none;}
+    .meal-cell .meal-value[title]{border-bottom:1px dotted var(--muted);cursor:help;}
+  }
 
   .cal-section{margin-bottom:16px;}
   .cal-list{
@@ -241,7 +247,7 @@
         <button class="toggle-btn" id="hourlyBtn" aria-expanded="false">Detaljnije</button>
       </div>
       <div class="chart-card">
-        <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine (mm)</span><span><i style="background:var(--wind)"></i>Vetar</span></div>
+        <div class="chart-legend"><span><i style="background:var(--amber)"></i>Temperatura</span><span><i style="background:var(--rain)"></i>Padavine (mm)</span><span><i style="background:var(--wind)"></i>Vetar (km/h)</span></div>
         <div id="hourlyChart"></div>
       </div>
       <div class="details" id="hourlyDetails"></div>
@@ -257,7 +263,7 @@
           <span><i style="background:var(--amber)"></i>Maks.</span>
           <span><i style="background:var(--teal)"></i>Min.</span>
           <span><i style="background:var(--rain)"></i>Padavine (mm)</span>
-          <span><i style="background:var(--wind)"></i>Vetar</span>
+          <span><i style="background:var(--wind)"></i>Vetar (km/h)</span>
         </div>
         <div id="dailyChart"></div>
       </div>
@@ -345,8 +351,9 @@ function findCurrentIndex(times){
 
 /* ---- generic SVG line chart ---- */
 function svgLineChart(labels, series, height){
-  const hasAxis = series.some(s=>s.axisUnit);
-  const W=600, H=height, padL=16, padR=hasAxis?44:16, padT=24, padB=22;
+  const hasLeftAxis = series.some(s=>s.axisUnit && s.axisSide === 'left');
+  const hasRightAxis = series.some(s=>s.axisUnit && s.axisSide !== 'left');
+  const W=600, H=height, padL=hasLeftAxis?44:16, padR=hasRightAxis?44:16, padT=24, padB=22;
   const plotW=W-padL-padR, plotH=H-padT-padB;
   const n = labels.length;
   const x = i => padL + (n===1 ? plotW/2 : i*(plotW/(n-1)));
@@ -384,17 +391,21 @@ function svgLineChart(labels, series, height){
     });
   });
 
-  // desna osa za padavine: gore je maksimum u prikazanom periodu, 0 je dno grafika
+  // bočne ose: gore je maksimum u prikazanom periodu, 0 je dno grafika
+  // (padavine su na desnoj strani, vetar na levoj)
   series.forEach(s=>{
     if(!s.axisUnit) return;
+    const left = s.axisSide === 'left';
+    const digits = s.axisDigits === undefined ? 1 : s.axisDigits;
+    const fmt = v => String(+v.toFixed(digits));
+    const tx = left ? 3 : W - 3;
+    const anchor = left ? 'start' : 'end';
     const realMax = Math.max(...s.values);
-    const fmt = v => String(+v.toFixed(1));
-    const tx = W - 3;
     if(realMax > 0){
-      svg += `<text x="${tx}" y="${padT + 9}" font-size="9" text-anchor="end" fill="${s.color}">${fmt(realMax)} ${s.axisUnit}</text>`;
-      svg += `<text x="${tx}" y="${padT + plotH}" font-size="9" text-anchor="end" fill="${s.color}">0</text>`;
+      svg += `<text x="${tx}" y="${padT + 9}" font-size="9" text-anchor="${anchor}" fill="${s.color}">${fmt(realMax)} ${s.axisUnit}</text>`;
+      svg += `<text x="${tx}" y="${padT + plotH}" font-size="9" text-anchor="${anchor}" fill="${s.color}">0</text>`;
     } else {
-      svg += `<text x="${tx}" y="${padT + plotH - 4}" font-size="9" text-anchor="end" fill="${s.color}">0 ${s.axisUnit}</text>`;
+      svg += `<text x="${tx}" y="${padT + plotH - 4}" font-size="9" text-anchor="${anchor}" fill="${s.color}">0 ${s.axisUnit}</text>`;
     }
   });
 
@@ -448,7 +459,7 @@ function renderHourly(data){
   document.getElementById('hourlyChart').innerHTML = svgLineChart(labels, [
     {values:temps, color:'var(--amber)'},
     {values:precips, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', axisUnit:'mm', showValues:false, dash:'4,3'},
-    {values:winds, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
+    {values:winds, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', axisUnit:'km/h', axisSide:'left', axisDigits:0, showValues:false, dash:'1,3'}
   ], 150);
 
   const det = document.getElementById('hourlyDetails');
@@ -497,7 +508,7 @@ function renderDaily(data){
     {values:maxT, color:'var(--amber)'},
     {values:minT, color:'var(--teal)', labelBelow:true},
     {values:precipSum, color:'var(--rain)', scaleGroup:'precip', zeroBase:true, unit:'mm', axisUnit:'mm', showValues:false, dash:'4,3'},
-    {values:windMax, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', showValues:false, dash:'1,3'}
+    {values:windMax, color:'var(--wind)', scaleGroup:'wind', zeroBase:true, unit:'km/h', axisUnit:'km/h', axisSide:'left', axisDigits:0, showValues:false, dash:'1,3'}
   ], 150);
 
   const det = document.getElementById('dailyDetails');
@@ -584,23 +595,24 @@ const MENU_SERVICE_BASE = 'https://jelovnik-service.onrender.com';
 const MENU_IMG_URL = MENU_SERVICE_BASE + '/jelovnik/vrtic';
 const MENU_TODAY_URL = MENU_SERVICE_BASE + '/jelovnik/vrtic/danas';
 
-// Izdvaja tekst u zagradama (npr. alergeni) u "hint" (title atribut, prikazuje se
-// kao tooltip na hover), a glavni tekst ostaje čist bez zagrada.
-function splitHint(text){
-  if(!text) return {main:'', hint:''};
-  const hints = [];
-  const main = text
-    .replace(/\(([^)]*)\)/g, (_, inner) => { hints.push(inner.trim()); return ''; })
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+([.,])/g, '$1')
-    .trim();
-  return {main, hint: hints.join('; ')};
-}
-
+// Tekst u zagradama (npr. alergeni) ostaje u HTML-u kao <span class="meal-paren">;
+// CSS ga u landscape prikazu sakriva, a isti tekst je dostupan kao hint (title) na hover.
+// U portretu se prikazuje ceo tekst, zajedno sa zagradama.
 function mealCellHtml(emoji, label, text){
-  const {main, hint} = splitHint(text || '');
-  const titleAttr = hint ? ` title="${hint.replace(/"/g, '&quot;')}"` : '';
-  return `<div class="meal-cell"><div class="meal-label">${emoji} ${label}</div><div class="meal-value"${titleAttr}>${main || '–'}</div></div>`;
+  text = text || '';
+  const hints = [];
+  const re = /(\s*)\(([^)]*)\)/g;   // razmak ispred zagrade ulazi u span, da nestane zajedno sa njom
+  let html = '', last = 0, m;
+  while((m = re.exec(text)) !== null){
+    html += escapeHtml(text.slice(last, m.index));
+    html += `<span class="meal-paren">${escapeHtml(m[1] + '(' + m[2] + ')')}</span>`;
+    hints.push(m[2].trim());
+    last = m.index + m[0].length;
+  }
+  html = (html + escapeHtml(text.slice(last))).trim();
+  const hint = hints.join('; ');
+  const titleAttr = hint ? ` title="${escapeHtml(hint).replace(/"/g, '&quot;')}"` : '';
+  return `<div class="meal-cell"><div class="meal-label">${emoji} ${label}</div><div class="meal-value"${titleAttr}>${html || '–'}</div></div>`;
 }
 
 async function loadMenuToday(){
