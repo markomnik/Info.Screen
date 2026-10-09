@@ -242,7 +242,7 @@
 
   <section class="cal-section">
     <div class="col-head">
-      <h2 class="colTitle">Kalendar - uskoro dostupan</h2>
+      <h2 class="colTitle">Kalendar</h2>
     </div>
     <div id="calBody"><div class="cal-empty">Učitavanje…</div></div>
   </section>
@@ -626,90 +626,34 @@ document.getElementById('menuImgBtn').addEventListener('click', (e) => {
   if(open) renderMenu();
 });
 
-/* ---- Kalendar (Google Calendar preko mcp capabilitija) ---- */
-function renderCalError(err){
-  const body = document.getElementById('calBody');
-  const map = {
-    needs_reauth: 'Potrebno je ponovo povezati Google Calendar (Podešavanja → Konektori).',
-    server_not_connected: 'Google Calendar nije povezan za ovu stranicu.',
-    selection_required: 'Izaberi Google Calendar nalog u podešavanjima.',
-    not_in_manifest: 'Pristup kalendaru nije dozvoljen za ovu stranicu.',
-    blocked_by_policy: 'Pristup kalendaru je blokiran politikom organizacije.',
-    approval_required: 'Pristup kalendaru čeka odobrenje.',
-    not_granted: 'Kalendar nije dozvoljen za ovu stranicu.',
-  };
-  body.innerHTML = `<div class="cal-empty">${map[err.code] || 'Kalendar trenutno nije dostupan.'}</div>`;
+/* ---- Kalendar (preko backend servisa) ---- */
+const CALENDAR_URL = MENU_SERVICE_BASE + '/calendar/next-days';
+
+function escapeHtml(s){
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function renderCalendar(payload, startBoundary, labels){
+function renderCalendar(data){
   const body = document.getElementById('calBody');
-  const items = (payload && payload.events) || [];
-
-  const buckets = [[], [], [], []];
-  items.forEach(ev => {
-    const startStr = (ev.start && (ev.start.dateTime || ev.start.date)) || null;
-    if(!startStr) return;
-    const d = new Date(startStr);
-    const dayMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const dayIdx = Math.round((dayMidnight - startBoundary) / 86400000);
-    if(dayIdx >= 0 && dayIdx < 4) buckets[dayIdx].push(ev);
-  });
-
-  body.innerHTML = buckets.map((evs, i) => {
-    const rows = evs.length
-      ? evs.map(ev => {
-          const allDay = !(ev.start && ev.start.dateTime);
-          const time = allDay
-            ? 'Ceo dan'
-            : new Date(ev.start.dateTime).toLocaleTimeString('sr-RS', {hour:'2-digit', minute:'2-digit'});
-          const title = ((ev.summary || '(bez naziva)') + '').replace(/</g, '&lt;');
-          const loc = ev.location ? ` <span class="cal-loc">· ${(''+ev.location).replace(/</g,'&lt;')}</span>` : '';
-          return `<div class="cal-event"><span class="cal-time">${time}</span><span class="cal-title">${title}${loc}</span></div>`;
+  body.innerHTML = data.days.map(day => {
+    const rows = day.events.length
+      ? day.events.map(ev => {
+          const time = ev.allDay ? 'Ceo dan' : (ev.continues ? 'Nastavlja se' : ev.time);
+          const loc = ev.location ? ` <span class="cal-loc">· ${escapeHtml(ev.location)}</span>` : '';
+          return `<div class="cal-event"><span class="cal-time">${time}</span><span class="cal-title">${escapeHtml(ev.title)}${loc}</span></div>`;
         }).join('')
       : '<div class="cal-empty">Nema zakazanih termina.</div>';
-    return `<div class="cal-day"><div class="cal-day-label">${labels[i]}</div>${rows}</div>`;
+    return `<div class="cal-day"><div class="cal-day-label">${escapeHtml(day.label)}</div>${rows}</div>`;
   }).join('');
 }
 
 async function initCalendar(){
   const body = document.getElementById('calBody');
-  const mcp = (window.claude && window.claude.use) ? await window.claude.use('mcp') : null;
-  if(!mcp){
-    body.innerHTML = '<div class="cal-empty">Kalendar nije dostupan u ovom prikazu.</div>';
-    return;
-  }
-
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 4);
-
-  const labels = [];
-  for(let i = 0; i < 4; i++){
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    if(i === 0) labels.push('Danas');
-    else if(i === 1) labels.push('Sutra');
-    else labels.push(`${dayShort[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.`);
-  }
-
   try{
-    mcp.watchTool(
-      'Google Calendar',
-      'list_events',
-      {
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-        timeZone: 'Europe/Belgrade',
-        orderBy: 'startTime',
-        pageSize: 50,
-      },
-      (ev) => {
-        if(ev.type === 'error'){ renderCalError(ev.error); return; }
-        renderCalendar(ev.result.payload, start, labels);
-      },
-      { refetchInterval: 15 * 60 * 1000 }
-    );
+    const res = await fetch(CALENDAR_URL);
+    const data = await res.json();
+    if(!res.ok || data.greska) throw new Error(data.greska || 'greška');
+    renderCalendar(data);
   }catch(e){
     body.innerHTML = '<div class="cal-empty">Kalendar trenutno nije dostupan.</div>';
   }
