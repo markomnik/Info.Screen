@@ -198,6 +198,7 @@
   :root[data-theme="dark"] .menu-link{color:#9db4ea;}
 
   .status{font-size:13px;color:var(--muted);margin-top:18px;text-align:center;}
+  .status a{color:inherit;text-decoration:underline dotted;text-underline-offset:2px;}
   .status button{
     background:none;border:1px solid var(--line);color:var(--ink);
     padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;margin-top:6px;
@@ -294,8 +295,9 @@
     </div>
   </section>
 
-  <div class="status" id="status">
-    Podaci: Open-Meteo
+  <div class="status">
+    <span id="status">Podaci: Open-Meteo</span>
+    <span class="status-contact"> · Kontakt: <a href="mailto:day.info.screen@gmail.com">day.info.screen@gmail.com</a></span>
   </div>
 </div>
 
